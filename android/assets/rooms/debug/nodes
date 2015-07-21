@@ -1,0 +1,5 @@
+4608,3456
+100,100,entrance,between
+400,400,between,entrance,other
+800,200,other,between,next
+900,500,next,other

@@ -8,7 +8,11 @@ public abstract class CreatureFunctions {
 	
 	public abstract void arrivedAtNode(GameRoom room, Creature creature, String node);
 	
+	public abstract void finishedPath(GameRoom room, Creature creature, String node);
+	
 	public abstract String nextAnimation(GameRoom room, Creature creature, String prevAnim);
 	
 	public abstract void moving(GameRoom room, Creature creature, Point movement);
+	
+	public abstract void stopped(GameRoom room, Creature creature, String node);
 }

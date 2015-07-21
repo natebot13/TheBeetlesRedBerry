@@ -2,15 +2,17 @@ package me.nathanp.beetlesredberry;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.brashmonkey.spriter.Data;
 import com.brashmonkey.spriter.SCMLReader;
 
-import me.nathanp.beetlesredberry.rooms.MenuRoom;
+import me.nathanp.beetlesredberry.rooms.*;
 
 public class BeetlesRedBerry implements ApplicationListener {
     private SpriterLoader loader;
@@ -28,6 +30,7 @@ public class BeetlesRedBerry implements ApplicationListener {
     private static final int sizeY = 1000;
     
     private GameRoom room;
+    private InputProcessor input;
     
     @Override
     public void create () {
@@ -45,7 +48,13 @@ public class BeetlesRedBerry implements ApplicationListener {
         
         boolean devMode = true;
         
-        room = new GameRoom("Menu", new MenuRoom(), data, drawer, "spirit", "entrance", "idle", devMode);
+        room = new GameRoom("debug", new DebugRoom(), data, drawer, "spirit", "entrance", "idle", devMode);
+        if (devMode) {
+        	input = new LevelEditorInput(room, camera);
+        } else {
+        	input = new Input();
+        }
+        Gdx.input.setInputProcessor(input);
     }
 
     @Override
@@ -57,9 +66,11 @@ public class BeetlesRedBerry implements ApplicationListener {
         renderer.setProjectionMatrix(camera.combined);
         batch.setProjectionMatrix(camera.combined);
         
+        renderer.begin(ShapeType.Filled);
         batch.begin();
         room.render(Gdx.graphics.getDeltaTime());
         batch.end();
+        renderer.end();
     }
     
     @Override

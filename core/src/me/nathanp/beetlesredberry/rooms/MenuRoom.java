@@ -47,4 +47,16 @@ public class MenuRoom extends CreatureFunctions {
 	public void moving(GameRoom room, Creature creature, Point movement) {
 		creature.animation = "move";
 	}
+
+	@Override
+	public void finishedPath(GameRoom room, Creature creature, String node) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void stopped(GameRoom room, Creature creature, String node) {
+		// TODO Auto-generated method stub
+		
+	}
 }

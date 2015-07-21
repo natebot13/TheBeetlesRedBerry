@@ -7,6 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.brashmonkey.spriter.Point;
 
 public class RoomNodes {
@@ -24,7 +25,7 @@ public class RoomNodes {
     private transient HashMap<String, String> edgeto;
     
     public RoomNodes() {
-        this(50);
+        this(10);
     }
     
     public RoomNodes(int clickableRadius) {
@@ -34,6 +35,12 @@ public class RoomNodes {
         clickableNodes = new HashSet<String>(nodes.keySet());
         
         computed = new HashMap<String, Integer>();
+    }
+    
+    public void init() {
+    	for (Node node : nodes.values()) {
+    		node.init(this);
+    	}
     }
     
     public void rescale(int x, int y) {
@@ -82,6 +89,26 @@ public class RoomNodes {
         return ret;
     }
     
+    public String getNextNode(String from) {
+    	if (nodes.containsKey(from)) {
+    		for (String node : nodes.get(from).children) {
+    			return node;
+    		}
+    	}
+    	return null;
+    }
+    
+    public String getRandomChild(String from) {
+    	int r = (int) (Math.random() * nodes.get(from).children.size());
+    	int i = 0;
+		for (String child : nodes.get(from).children) {
+			if (i == r) {
+				return child;
+			} i += 1;
+		}
+		return null;
+    }
+    
     private void computePath(String from, String to) {
         marked.add(from);
         
@@ -103,7 +130,7 @@ public class RoomNodes {
     }
 
     public Point getPoint(String name) {
-        return nodes.get(name).pos;
+        return new Point(nodes.get(name).pos);
     }
     
     public int getNodeRadius() {
@@ -122,14 +149,14 @@ public class RoomNodes {
         return getNearest(pos, useRadius, onlyClickables, true);
     }
     
-    public String getNearest(Point pos, boolean useRadius, boolean onlyClickables, boolean ignoreDisabled) {
+    public String getNearest(Point pos, boolean useRadius, boolean onlyClickableNodes, boolean ignoreDisabledNodes) {
         int min;
         if (useRadius) min = clickableRadius;
         else min = Integer.MAX_VALUE;
         String nearest = null;
         for (Entry<String, Node> entry : nodes.entrySet()) {
-            if (onlyClickables && !clickableNodes.contains(entry.getKey())) continue;
-            if (ignoreDisabled && disabledNodes.contains(entry.getKey())) continue;
+        	if (ignoreDisabledNodes && disabledNodes.contains(entry.getKey())) continue;
+            if (onlyClickableNodes && !clickableNodes.contains(entry.getKey())) continue;
             int dist = (int)distance(pos, entry.getValue().pos);
             if (dist < min) {
                 min = dist;
@@ -147,6 +174,54 @@ public class RoomNodes {
     
     static double angle(Point p1, Point p2) {
         return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    }
+    
+    public String newNode(boolean clickable, boolean disabled, String name, int x, int y, int z, int moveSpeed, int animationSpeed) {
+    	if (nodes.containsKey(name)) {
+	    	int id = 1;
+	    	while (nodes.containsKey(name + "_" + id)) {
+	    		id += 1;
+	    	}
+	    	name += "_" + id;
+    	}
+    	this.nodes.put(name, new Node(this, name, x, y, z, moveSpeed, animationSpeed));
+    	if (clickable) {
+    		makeClickable(name);
+    	}
+    	if (disabled) {
+    		disableNode(name);
+    	}
+    	return name;
+    }
+    
+    public void removeNode(String name) {
+    	nodes.get(name).removeSelf();
+    	disabledNodes.remove(name);
+		clickableNodes.remove(name);
+    }
+    
+    public void renameNode(String orig, String newname) {
+    	nodes.get(orig).renameSelf(newname);
+    	if (clickableNodes.contains(orig)) {
+    		removeClickable(orig);
+    		makeClickable(newname);
+    	}
+    	if (disabledNodes.contains(orig)) {
+    		enableNode(orig);
+    		disableNode(newname);
+    	}
+    }
+    
+    public void setChild(String parent, String child) {
+    	nodes.get(parent).addChild(child);
+    }
+    
+    public void makeClickable(String name) {
+    	clickableNodes.add(name);
+    }
+    
+    public void removeClickable(String name) {
+    	clickableNodes.remove(name);
     }
     
     public void disableNodes(Collection<String> disNodes) {
@@ -173,6 +248,16 @@ public class RoomNodes {
         return disabledNodes;
     }
     
+    public int size() {
+    	return nodes.size();
+    }
+    
+    public void draw(SpriterDrawer drawer) {
+    	for (Node node : nodes.values()) {
+    		node.draw(drawer);
+    	}
+    }
+    
     @Override
     public String toString() {
         String ret = "{";
@@ -187,27 +272,45 @@ public class RoomNodes {
         return ret;
     }
     
-    public class Node {
+    public static class Node {
+    	private transient RoomNodes roomnodes;
     	public String name;
     	public Point pos;
     	public int zIndex;
-    	public int speed;
+    	public int moveSpeed;
+    	public int animationSpeed = 15;
     	public HashSet<String> children;
     	
-    	public Node(String name, int x, int y, int speed) {
-    		this(name, new Point(x, y), speed);
+    	public Node() {}
+    	
+    	public Node(RoomNodes roomnodes, String name, int x, int y, int moveSpeed, int animationSpeed) {
+    		this(roomnodes, name, new Point(x, y), moveSpeed, animationSpeed);
     	}
     	
-    	public Node(String name, Point pos, int speed) {
-    		this(name, pos, 0, speed, new HashSet<String>());
+    	public Node(RoomNodes roomnodes, String name, int x, int y, int z, int moveSpeed, int animationSpeed) {
+    		this(roomnodes, name, new Point(x, y), z, moveSpeed, animationSpeed);
     	}
     	
-    	public Node(String name, Point pos, int z, int speed, HashSet<String> children) {
+    	public Node(RoomNodes roomnodes, String name, Point pos, int speed, int animationSpeed) {
+    		this(roomnodes, name, pos, 0, speed, animationSpeed, new HashSet<String>());
+    	}
+    	
+    	public Node(RoomNodes roomnodes, String name, Point pos, int z, int speed, int animationSpeed) {
+    		this(roomnodes, name, pos, z, speed, animationSpeed, new HashSet<String>());
+    	}
+    	
+    	public Node(RoomNodes roomnodes, String name, Point pos, int z, int moveSpeed, int animationSpeed, HashSet<String> children) {
+    		this.roomnodes = roomnodes;
     		this.name = name;
     		this.pos = pos;
     		this.zIndex = z;
-    		this.speed = speed;
+    		this.moveSpeed = moveSpeed;
+    		this.animationSpeed = animationSpeed;
     		this.children = children;
+    	}
+    	
+    	public void init(RoomNodes roomnodes) {
+    		this.roomnodes = roomnodes;
     	}
     	
     	public void addChild(String child) {
@@ -220,9 +323,44 @@ public class RoomNodes {
     		}
     	}
     	
+    	public void removeChild(String child) {
+    		this.children.remove(child);
+    	}
+    	
+    	public void renameSelf(String newname) {
+    		for (Node node : roomnodes.nodes.values()) {
+    			node.renameChild(name, newname);
+    		}
+    		roomnodes.nodes.put(newname, roomnodes.nodes.remove(name));
+    		name = newname;
+    	}
+    	
+    	public void renameChild(String from, String to) {
+    		if (children.remove(from)) {
+    			children.add(to);
+    		}
+    	}
+    	
+    	public void removeSelf() {
+    		for (Node node : roomnodes.nodes.values()) {
+    			node.removeChild(name);
+    		}
+    		roomnodes.nodes.remove(name);
+    	}
+    	
+    	public void draw(SpriterDrawer drawer) {
+    		drawer.renderer.setColor(1, 0, 0, 1);
+    		drawer.renderer.set(ShapeType.Filled);
+    		drawer.circle(pos.x, pos.y, roomnodes.clickableRadius);
+    		for (String child : children) {
+    			Node childNode = roomnodes.nodes.get(child);
+    			drawer.line(pos.x, pos.y, childNode.pos.x, childNode.pos.y);
+    		}
+    	}
+    	
     	@Override
     	public String toString() {
-    		return "{" + name + ":" + pos + ",z:" + zIndex + ",speed:" + speed + "," + children + "}";
+    		return "{" + name + ":" + pos + ",z:" + zIndex + ",moveSpeed:" + moveSpeed + ",animationSpeed:" + animationSpeed + ",children:" + children + "}";
     	}
     }
 }

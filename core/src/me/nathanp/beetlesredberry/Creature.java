@@ -5,6 +5,9 @@ import java.util.LinkedList;
 import com.brashmonkey.spriter.Animation;
 import com.brashmonkey.spriter.Player;
 import com.brashmonkey.spriter.Point;
+
+import me.nathanp.beetlesredberry.RoomNodes.Node;
+
 import com.brashmonkey.spriter.Mainline.Key;
 
 public class Creature {
@@ -28,19 +31,21 @@ public class Creature {
     private transient boolean arriveOnce = true;
     private transient LinkedList<String> currentPath = new LinkedList<String>();
     
+    public Creature() {}
+    
     public Creature(GameRoom room, CreatureFunctions callbacks, String name, int number, String startingNode, String animation) {
     	this.callbacks = callbacks;
     	this.room  = room;
     	this.name = name;
     	this.number = number;
     	init(room, callbacks);
-    	pos = room.getNodes().getPoint(currentNode);
+    	currentNode = startingNode;
+    	pos = new Point(room.getNodes().getPoint(currentNode));
     	angle = creature.getAngle();
     	this.animation = animation;
     	time = creature.getTime();
     	speed = creature.speed;
     	moveSpeed = room.getCreatureMoveSpeed();
-    	currentNode = startingNode;
     	setCallback();
     }
     
@@ -68,16 +73,59 @@ public class Creature {
     }
     
     /**
-     * Tells the player to attempt to navigate to the node.
+     * Tells the creature to attempt to navigate to the node from the current node.
      * Appends the computed path to the previous path so the player will pass through all points.
      * @param name the name of the node
      */
-    public void gotoNode(String name) {
-        for (String n : room.getNodes().getPath(currentNode, name)) {
-            currentPath.add(n);
+    public void gotoNode(String to) {
+        gotoNode(to, currentNode);
+    }
+    
+    /**
+     * Calculates and appends the path between 'from' and 'to', to the creatures route queue.
+     * Note that if the creature is not already at the 'from' node, it will beeline to it,
+     * and then follow the calulated path. 
+     * @param to the destination node
+     * @param from the starting node
+     */
+    public void gotoNode(String to, String from) {
+    	for (String n : room.getNodes().getPath(from, to)) {
+        	if (!currentPath.contains(n)) {
+        		currentPath.add(n);
+        	}
         }
     }
     
+    /**
+     * Tells the creature to go to the child of the current node.
+     * If the current node has more than one child, there is no guarantee
+     * which child will be returned.
+     */
+    public void gotoNextNode() {
+    	addToPath(room.getNodes().getNextNode(currentNode));
+    }
+    
+    public void gotoRandomNextNode() {
+    	addToPath(room.getNodes().getRandomChild(currentNode));
+    }
+    
+    public void cutToNode(String node) {
+    	addToPath(node);
+    }
+    
+    public void teleToNode(String node) {
+    	currentNode = node;
+    	currentPath.clear();
+    	pos.set(room.getNodes().getPoint(node));
+    }
+    
+    private boolean addToPath(String node) {
+    	if (node != null && !currentPath.contains(node)) {
+    		currentPath.add(node);
+    		return true;
+    	}
+    	return false;
+    }
     /**
      * Changes the player animation to name
      * @param name the name of the animation
@@ -104,6 +152,7 @@ public class Creature {
     	creature = new Player(room.getData().getEntity(name));
     	this.room = room;
     	this.callbacks = callbacks;
+    	setCallback();
     }
     
     /**
@@ -121,16 +170,24 @@ public class Creature {
             pos.translate(dx, dy);
             callbacks.moving(room, this, new Point(dx, dy));
             if (moveAtAngle) {
-            	angle = (float) Math.toDegrees(angle);
+            	this.angle = (float) Math.toDegrees(angle);
             }
         } else if (arriveOnce) {
-        	zIndex = room.getNodes().getNode(currentNode).zIndex;
+        	Node node = room.getNodes().getNode(currentNode);
+        	zIndex = node.zIndex;
+        	moveSpeed = node.moveSpeed;
+        	speed = node.animationSpeed;
+        	if (currentPath.size() == 0) {
+        		callbacks.finishedPath(room, this, currentNode);
+        	}
             callbacks.arrivedAtNode(room, this, currentNode);
             arriveOnce = false;
         }
         if (!movementPaused && !arriveOnce && currentPath.size() > 0) {
             currentNode = currentPath.remove();
             arriveOnce = true;
+        } else if (!movementPaused && !arriveOnce && currentPath.size() == 0) {
+        	callbacks.stopped(room, this, currentNode);
         }
     }
     
@@ -139,7 +196,7 @@ public class Creature {
     	creature.setPosition(pos);
     	creature.setAngle(angle);
     	creature.setAnimation(animation);
-    	creature.setTime(time);
+    	//creature.setTime(time);
     	creature.speed = speed;
     	creature.update();
     }

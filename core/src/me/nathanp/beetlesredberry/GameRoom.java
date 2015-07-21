@@ -14,7 +14,7 @@ import java.util.Map.Entry;
 public class GameRoom extends ApplicationAdapter{
     private transient final int creatureMoveSpeed = 300;
     private transient final static String savePath = "redberry/sav/rooms/";
-    private transient final static String roomsPath = "Rooms/";
+    private transient final static String roomsPath = "rooms/";
     private transient final static String backgroundName = "background.jpg";
     private transient final static String defaultName = "default";
     private transient boolean paused = false;
@@ -94,7 +94,10 @@ public class GameRoom extends ApplicationAdapter{
      * @param drawer the drawer
      */
     private void draw() {
-        drawer.draw(background, backgroundY, backgroundX);
+    	drawer.draw(background, backgroundY, backgroundX);
+        if (devMode) {
+        	nodes.draw(drawer);
+        }
         for (Creature creature : creatureList) {
             creature.draw(drawer);
         }
@@ -128,7 +131,7 @@ public class GameRoom extends ApplicationAdapter{
     	return creatures.get(name);
     }
     
-    public void newCreature(String name, String startingNode, String startingAnimation) {
+    public String newCreature(String name, String startingNode, String startingAnimation) {
     	int num;
     	if (creatureNumbers.containsKey(name)) num = creatureNumbers.get(name) + 1;
     	else num = 0;
@@ -136,6 +139,18 @@ public class GameRoom extends ApplicationAdapter{
     	Creature c = new Creature(this, callbacks, name, num, startingNode, startingAnimation);
     	creatures.put(name + "_" + num, c);
     	creatureList.add(c);
+    	return name + "_" + num;
+    }
+    
+    public void removeCreature(String name) {
+    	if (creatures.containsKey(name)) {
+    		if (creatureNumbers.get(name) == 0) {
+    			creatureNumbers.remove(name);
+    		} else {
+    			creatureNumbers.put(name, creatureNumbers.get(name) - 1);
+    		}
+	    	creatureList.remove(creatures.remove(name));
+    	}
     }
     
     public void sortByZ() {
@@ -154,6 +169,10 @@ public class GameRoom extends ApplicationAdapter{
     @Override
     public void pause() {
         paused = true;
+    }
+    
+    public boolean isPaused() {
+    	return paused;
     }
     
     @Override
@@ -197,6 +216,7 @@ public class GameRoom extends ApplicationAdapter{
 	        	room.backgroundX = state.backgroundX;
 	        	room.backgroundY = state.backgroundY;
         	}
+        	room.nodes.init();
         }
         
         public static void saveToState(GameRoom room, RoomState state) {
@@ -226,10 +246,23 @@ public class GameRoom extends ApplicationAdapter{
         FileHandle readFrom = Gdx.files.local(savePath + name);
         RoomState state;
         if (readFrom.exists()) {
+        	if (devMode) {
+        		System.out.println("Using existing room save");
+        	}
         	state = json.fromJson(RoomState.class, readFrom);
         } else {
+        	if (devMode) {
+        		System.out.println("Using default room loader");
+        	}
         	readFrom = Gdx.files.internal(roomsPath + name + "/" + defaultName);
-            state = json.fromJson(RoomState.class, readFrom);
+        	if (readFrom.exists()) {
+        		state = json.fromJson(RoomState.class, readFrom);
+        	} else {
+        		if (devMode) {
+        			System.out.println("Warning! Couldn't find default loader. You need to create this room!");
+        		}
+        		state = null;
+        	}
         }
         RoomState.loadFromState(this, state);
     }
