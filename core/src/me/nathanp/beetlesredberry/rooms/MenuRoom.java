@@ -7,55 +7,84 @@ import me.nathanp.beetlesredberry.GameRoom;
 import me.nathanp.beetlesredberry.CreatureFunctions;
 
 public class MenuRoom extends CreatureFunctions {
-
+	
+	@Override
+	public void onCreate(GameRoom room, Creature creature) {
+		if (creature.name.equals("talkbubble")) {
+			creature.animation = "turnon";
+		} else if (creature.name.equals("beetle")) {
+			creature.animation = "idle";
+		}
+	}
+	
     @Override
     public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-        if (node.equals("entrance")) {
-            creature.gotoNode("next");
-            creature.pauseMovement();
-            creature.changePlayerAnimation("shiver");
-        } else if (node.equals("next")) {
-            creature.gotoNode("entrance");
-            creature.pauseMovement();
-            creature.changePlayerAnimation("shiver");
-        } else if (node.equals("exit")) {
-        	room.nextRoom("Menu", new MenuRoom(), "entrance", "idle");
+    	if (creature.name.equals("talkbubble")) {
+    		creature.speed = 0;
+    	}
+        if (node.equals("rightentrance")) {
+            creature.gotoNextNode();
+        } else if (node.equals("rightexit")) {
+        	room.gotoNextRoom(new LilypadRoom(), "leftentrance", creature.animation);
+        } else if (node.equals("leftexit") && room.getCurrentCreature().equals(creature.name)) {
+        	room.gotoNextRoom(new FlyRoom(), "rightentrance", creature.animation);
+        } else if (node.equals("leftentrance")) {
+        	creature.gotoNextNode();
+        } else if (node.equals("chat")) {
+        	room.getCreature("beetle").animation = "talk";
+        	room.getCreature("talkbubble").speed = 15;
         }
     }
     
     @Override
-    public void headingToNode(GameRoom room, Creature creature, String node) {
-    	
-    }
+    public void headingToNode(GameRoom room, Creature creature, String node) {}
 
     @Override
-    public String nextAnimation(GameRoom room, Creature creature, String prevAnim) {
-        if (creature.name.equals("spirit")) {
-            if (prevAnim.equals("shiver")) {
-                creature.resumeMovement();
-                return "idle";
-            } else if (prevAnim.equals("move")) {
-                return "move";
-            }
-        } else if (creature.name.equals("beetle")) {
-            return "scurry,idle,roll".split(",")[(int)Math.random() * 3];
-        }
-        return "idle";
+    public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {
+    	if (creature.name.equals("talkbubble")) {
+    		if (prevAnim.equals("turnon")) {
+    			creature.animation = "idle";
+    		} else if (prevAnim.equals("turnoff")) {
+    			creature.speed = 0;
+    			creature.animation = "turnon";
+    		}
+    	} else if (creature.name.equals("beetle") && prevAnim.equals("talk")) {
+    		room.getCreature("talkbubble").animation = "turnoff";
+    		creature.animation = "idle";
+    	}
     }
 
 	@Override
 	public void moving(GameRoom room, Creature creature, Point movement) {
-		creature.animation = "move";
+		super.moving(room, creature, movement);
 	}
 
 	@Override
-	public void finishedPath(GameRoom room, Creature creature, String node) {
+	public void finishedPath(GameRoom room, Creature creature, String node) {}
+
+	@Override
+	public void stopped(GameRoom room, Creature creature, String node) {
+		if (creature.name.equals("ant")) {
+			creature.animation = "idle";
+		}
+	}
+
+	@Override
+	public void clicked(GameRoom room, Creature creature) {}
+
+	@Override
+	public String getRoomName() {
+		return "menu";
+	}
+
+	@Override
+	public void activated(GameRoom room, Creature creature) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void stopped(GameRoom room, Creature creature, String node) {
+	public void deactivated(GameRoom room, Creature creature) {
 		// TODO Auto-generated method stub
 		
 	}

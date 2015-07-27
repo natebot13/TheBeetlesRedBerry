@@ -8,17 +8,18 @@ import me.nathanp.beetlesredberry.Creature;
 import me.nathanp.beetlesredberry.CreatureFunctions;
 
 public class FlipFlopRoom extends CreatureFunctions {
-
+	
+	@Override
+	public void onCreate(GameRoom room, Creature craeture) {
+	}
+	
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
 		
 	}
 
 	@Override
-	public String nextAnimation(GameRoom room, Creature creature, String prevAnim) {
-		
-		return null;
-	}
+	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {}
 
 	@Override
 	public void headingToNode(GameRoom room, Creature creature, String node) {
@@ -40,6 +41,29 @@ public class FlipFlopRoom extends CreatureFunctions {
 
 	@Override
 	public void stopped(GameRoom room, Creature creature, String node) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void clicked(GameRoom room, Creature creature) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public String getRoomName() {
+		return "flipflop";
+	}
+
+	@Override
+	public void activated(GameRoom room, Creature creature) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void deactivated(GameRoom room, Creature creature) {
 		// TODO Auto-generated method stub
 		
 	}

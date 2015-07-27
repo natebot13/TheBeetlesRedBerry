@@ -1,6 +1,5 @@
 package me.nathanp.beetlesredberry;
 
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -56,9 +55,5 @@ public class SpriterDrawer extends Drawer<Sprite>{
         sprite.setColor(1f, 1f, 1f, object.alpha);
         sprite.setScale(object.scale.x, object.scale.y);
         sprite.draw(this.batch);
-    }
-    
-    public void draw(Texture texture, float x, float y) {
-        batch.draw(texture, x, y);
     }
 }

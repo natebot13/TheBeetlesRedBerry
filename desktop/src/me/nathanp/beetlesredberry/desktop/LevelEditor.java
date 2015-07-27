@@ -7,6 +7,8 @@ import me.nathanp.beetlesredberry.BeetlesRedBerry;
 public class LevelEditor {
 	public static void main (String[] arg) {
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
-		new LwjglApplication(new BeetlesRedBerry(), config);
+		config.width = 1024;
+		config.height = 576;
+		new LwjglApplication(new BeetlesRedBerry(true), config);
 	}
 }

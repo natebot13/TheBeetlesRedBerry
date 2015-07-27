@@ -10,6 +10,8 @@ import java.util.Map.Entry;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.brashmonkey.spriter.Point;
 
+import me.nathanp.beetlesredberry.util.Util;
+
 public class RoomNodes {
 	private transient final int nodeRadius = 5;
 	private Point originalSize;
@@ -18,23 +20,25 @@ public class RoomNodes {
     public HashSet<String> clickableNodes;
     private final HashSet<String> disabledNodes = new HashSet<String>();
     
-    private transient final HashMap<String, Integer> computed;
-    private transient int setnum = 0;
     private transient HashSet<String> marked;
     private transient LinkedList<String> queue;
     private transient HashMap<String, String> edgeto;
+    public transient boolean devMode = false;
     
     public RoomNodes() {
-        this(10);
+        this(10, false);
     }
     
-    public RoomNodes(int clickableRadius) {
+    public RoomNodes(boolean devMode) {
+        this(10, devMode);
+    }
+    
+    public RoomNodes(int clickableRadius, boolean devMode) {
+    	this.devMode = devMode;
     	originalSize = new Point();
     	this.clickableRadius = clickableRadius;
         nodes = new HashMap<String, Node>();
         clickableNodes = new HashSet<String>(nodes.keySet());
-        
-        computed = new HashMap<String, Integer>();
     }
     
     public void init() {
@@ -49,41 +53,18 @@ public class RoomNodes {
     	}
     }
     
-    public boolean isConnected(String name1, String name2) {
-        return isConnected(name1, name2, "");
-    }
-    
-    private boolean isConnected(String from, String to, String cameFrom) {
-        if (from.equals(to)) return true;
-        if (computed.containsKey(from)) {
-            if (computed.containsKey(to)) {
-                return computed.get(from) == computed.get(to);
-            }
-        } else {
-            computed.put(from, setnum);
-        }
-        for (String name : nodes.get(from).children) {
-            computed.put(name, setnum);
-            if (to.equals(name)) return true;
-            if (!cameFrom.equals(name)) {
-                return isConnected(name, to, from);
-            }
-        }
-        setnum += 1;
-        return false;
-    }
-    
     public List<String> getPath(String from, String to){
         LinkedList<String> ret = new LinkedList<String>();
-        if (!disabledNodes.contains(to) && isConnected(from ,to)) {
+        if (!disabledNodes.contains(to)) {
             marked = new HashSet<String>();
             edgeto = new HashMap<String, String>();
             queue = new LinkedList<String>();
-            computePath(from, to);
-            String curr = to;
-            while (!curr.equals(from)) {
-                ret.addFirst(curr);
-                curr = edgeto.get(curr);
+            if (computePath(from, to)) {
+		        String curr = to;
+		        while (!curr.equals(from)) {
+		            ret.addFirst(curr);
+		            curr = edgeto.get(curr);
+		        }
             }
         }
         return ret;
@@ -109,20 +90,22 @@ public class RoomNodes {
 		return null;
     }
     
-    private void computePath(String from, String to) {
+    private boolean computePath(String from, String to) {
         marked.add(from);
         
         if (from.equals(to)) {
-            return;
+            return true;
         }
         
         for (String child : nodes.get(from).children) {
             if (!marked.contains(child) && !disabledNodes.contains(child)) {
+            	marked.add(child);
                 edgeto.put(child, from);
                 queue.add(child);
             }
         }
-        computePath(queue.remove(), to);
+        if (queue.size() > 0) return computePath(queue.remove(), to);
+        else return false;
     }
     
     public Node getNode(String name) {
@@ -130,7 +113,8 @@ public class RoomNodes {
     }
 
     public Point getPoint(String name) {
-        return new Point(nodes.get(name).pos);
+    	if (nodes.get(name) == null) return null;
+    	return new Point(nodes.get(name).pos);
     }
     
     public int getNodeRadius() {
@@ -150,30 +134,23 @@ public class RoomNodes {
     }
     
     public String getNearest(Point pos, boolean useRadius, boolean onlyClickableNodes, boolean ignoreDisabledNodes) {
-        int min;
-        if (useRadius) min = clickableRadius;
-        else min = Integer.MAX_VALUE;
+    	if (devMode) {
+    		ignoreDisabledNodes = false;
+    		onlyClickableNodes = false;
+    	}
+        int min = Integer.MAX_VALUE;
         String nearest = null;
         for (Entry<String, Node> entry : nodes.entrySet()) {
         	if (ignoreDisabledNodes && disabledNodes.contains(entry.getKey())) continue;
             if (onlyClickableNodes && !clickableNodes.contains(entry.getKey())) continue;
-            int dist = (int)distance(pos, entry.getValue().pos);
+            int dist = (int) Util.distance(pos, entry.getValue().pos);
+            if (useRadius && dist > entry.getValue().clickableRadius) continue;
             if (dist < min) {
                 min = dist;
                 nearest  = entry.getKey();
             }
         }
         return nearest;
-    }
-    
-    static double distance(Point p1, Point p2) {
-        double xDist = p2.x - p1.x;
-        double yDist = p2.y - p1.y;
-        return Math.sqrt((xDist * xDist) + (yDist * yDist));
-    }
-    
-    static double angle(Point p1, Point p2) {
-        return Math.atan2(p2.y - p1.y, p2.x - p1.x);
     }
     
     public String newNode(boolean clickable, boolean disabled, String name, int x, int y, int z, int moveSpeed, int animationSpeed) {
@@ -278,7 +255,9 @@ public class RoomNodes {
     	public Point pos;
     	public int zIndex;
     	public int moveSpeed;
+    	public float scale = 1f;
     	public int animationSpeed = 15;
+    	public int clickableRadius = 10;
     	public HashSet<String> children;
     	
     	public Node() {}
@@ -349,9 +328,11 @@ public class RoomNodes {
     	}
     	
     	public void draw(SpriterDrawer drawer) {
-    		drawer.renderer.setColor(1, 0, 0, 1);
+    		if (roomnodes.clickableNodes.contains(name)) drawer.renderer.setColor(0,1,0,0.5f);
+    		else drawer.renderer.setColor(0,0,1,0.5f);
+    		if (roomnodes.disabledNodes.contains(name)) drawer.renderer.setColor(0,0,0,0.5f);
     		drawer.renderer.set(ShapeType.Filled);
-    		drawer.circle(pos.x, pos.y, roomnodes.clickableRadius);
+    		drawer.circle(pos.x, pos.y, clickableRadius);
     		for (String child : children) {
     			Node childNode = roomnodes.nodes.get(child);
     			drawer.line(pos.x, pos.y, childNode.pos.x, childNode.pos.y);

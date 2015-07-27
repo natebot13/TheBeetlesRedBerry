@@ -1,79 +1,107 @@
 package me.nathanp.beetlesredberry;
 
-import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonWriter;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import com.brashmonkey.spriter.Data;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map.Entry;
+import com.brashmonkey.spriter.Point;
 
-public class GameRoom extends ApplicationAdapter{
+import me.nathanp.beetlesredberry.util.Util;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
+public class GameRoom {
+	
     private transient final int creatureMoveSpeed = 300;
+    private transient final int clickableCreatureRadius = 20;
     private transient final static String savePath = "redberry/sav/rooms/";
     private transient final static String roomsPath = "rooms/";
     private transient final static String backgroundName = "background.jpg";
-    private transient final static String defaultName = "default";
+//    private transient final static String defaultName = "default";
     private transient boolean paused = false;
     
-    private transient String roomName;
+    public transient String roomName;
+    public transient final float roomHeight, roomWidth;
     private transient CreatureFunctions callbacks;
     private transient final Data data;
     private transient final SpriterDrawer drawer;
-    private transient Texture background;
-    private transient ArrayList<Creature> creatureList;
+    private transient Sprite background;
+    private transient LinkedList<String> loadQueue = new LinkedList<String>();
+    private transient LinkedList<Event> eventQueue = new LinkedList<Event>();
+    public transient String currentEntrance, currentAnimation;
+    //private transient ArrayList<Creature> creatureList;
     
     private HashMap<String, Integer> creatureNumbers = new HashMap<String, Integer>();
     public RoomNodes nodes;
     public HashMap<String, Creature> creatures;
-    private String currentCreature;
+    private transient String currentCreature;
     
-    private FileHandle saveTo;
-    private float backgroundX;
-    private float backgroundY;
+    private transient FileHandle saveTo;
     
-    private boolean devMode;
+    private transient boolean devMode;
     
-    public GameRoom(String roomName, CreatureFunctions callbacks, Data data, SpriterDrawer drawer, String initialCreature, String enterFrom, String enterAnimation) {
-    	this(roomName, callbacks, data, drawer, initialCreature, enterFrom, enterAnimation, false);
+    public GameRoom(int roomHeight, int roomWidth, CreatureFunctions callbacks, Viewport viewport, Data data, SpriterDrawer drawer, String initialCreature, String enterFrom, String enterAnimation) {
+    	this(roomHeight, roomWidth, callbacks, viewport, data, drawer, initialCreature, enterFrom, enterAnimation, false);
     }
     
-    public GameRoom(String roomName, CreatureFunctions callbacks, Data data, SpriterDrawer drawer, String initialCreature, String enterFrom, String enterAnimation, boolean devMode) {
+    public GameRoom(float roomWidth, float roomHeight, CreatureFunctions callbacks, Viewport viewport, Data data, SpriterDrawer drawer, String initialCreature, String enterFrom, String enterAnimation, boolean devMode) {
+    	this.roomWidth = roomWidth;
+    	this.roomHeight = roomHeight;
     	this.data = data;
         this.drawer = drawer;
         this.devMode = devMode;
-        currentCreature = initialCreature;
-        nextRoom(roomName, callbacks, enterFrom, enterAnimation, false);
+        setCurrentCreature(initialCreature);
+        if (devMode) {
+        	Gdx.input.setInputProcessor(new LevelEditorInput(this, viewport));
+        	System.out.println("Now Level Editting...");
+        } else {
+        	Gdx.input.setInputProcessor(new GameInput(this, viewport));
+        }
+        nextRoom(callbacks, enterFrom, enterAnimation, false);
     }
     
-    public void nextRoom(String name, CreatureFunctions callbacks, String enterFrom, String enterAnimation) {
-    	nextRoom(name, callbacks, enterFrom, enterAnimation, true);
+    public void nextRoom(CreatureFunctions callbacks, String enterFrom, String enterAnimation) {
+    	nextRoom(callbacks, enterFrom, enterAnimation, true);
     }
     
-    private void nextRoom(String name, CreatureFunctions callbacks, String enterFrom, String enterAnimation, boolean update) {
+    private void nextRoom(CreatureFunctions callbacks, String enterFrom, String enterAnimation, boolean update) {
     	if (update) {
-    		saveRoom();
     		dispose();
     	}
-    	
+    	//setSave(update);
     	this.callbacks = callbacks;
-        roomName = name;
+        roomName = callbacks.getRoomName();
         
         saveTo = Gdx.files.local(savePath + roomName);
-        
-    	loadRoom(roomName);
     	
-    	background = new Texture(roomsPath + roomName + "/" + backgroundName);
-        creatureList = new ArrayList<Creature>(creatures.values());
-    	if (!devMode) { 
-	    	newCreature(currentCreature, enterFrom, enterAnimation);
-    	}
-        for (Entry<String, Creature> c : creatures.entrySet()) {
-        	c.getValue().init(this, callbacks);
-        }
+    	background = new Sprite(new Texture(roomsPath + roomName + "/" + backgroundName));
+    	background.setPosition(0, 0);
+    	background.setSize(roomWidth, roomHeight);
+    	
+    	currentEntrance = enterFrom;
+    	currentAnimation = enterAnimation;
+    	loadQueue.add(roomName);
+    }
+    
+    public void gotoNextRoom(final CreatureFunctions callbacks, final String enterFrom, final String enterAnimation) {
+    	eventQueue.add(new Event() {
+			@Override
+			public void run() {
+				nextRoom(callbacks, enterFrom, enterAnimation, true);
+			}
+    	});
+    }
+    
+    public void reload(String enterFrom, String enterAnimation) {
+    	nextRoom(callbacks, enterFrom, enterAnimation, false);
     }
     
     /**
@@ -81,11 +109,16 @@ public class GameRoom extends ApplicationAdapter{
      * @param dt the delta time
      */
     private void update(float dt) {
+    	while(!loadQueue.isEmpty()) {
+    		loadRoom(loadQueue.remove());
+    	}
         if (!paused) {
-        	sortByZ();
-            for (Creature creature : creatureList) {
-                creature.update(dt);
+            for (String creature : creatures.keySet()) {
+                creatures.get(creature).update(dt);
             }
+        }
+        while (!eventQueue.isEmpty()) {
+        	eventQueue.remove().run();
         }
     }
     
@@ -94,11 +127,13 @@ public class GameRoom extends ApplicationAdapter{
      * @param drawer the drawer
      */
     private void draw() {
-    	drawer.draw(background, backgroundY, backgroundX);
+    	background.draw(drawer.batch);
         if (devMode) {
         	nodes.draw(drawer);
         }
-        for (Creature creature : creatureList) {
+        List<Creature> temp = new ArrayList<Creature>(creatures.values());
+        Collections.sort(temp, new Creature.CreatureComparator());
+        for (Creature creature : temp) {
             creature.draw(drawer);
         }
     }
@@ -131,42 +166,77 @@ public class GameRoom extends ApplicationAdapter{
     	return creatures.get(name);
     }
     
-    public String newCreature(String name, String startingNode, String startingAnimation) {
-    	int num;
+    public String getCurrentCreature() {
+		return currentCreature;
+	}
+
+	public void setCurrentCreature(String currentCreature) {
+		this.currentCreature = currentCreature;
+	}
+	
+	public void changeCurrentCreature(String currentCreature) {
+		if (getCurrentCreature() != null) {
+			creatures.get(getCurrentCreature()).deactivated();
+			this.currentCreature = currentCreature;
+			creatures.get(getCurrentCreature()).activated();
+		} else {
+			this.currentCreature = currentCreature;
+		}
+	}
+	
+	public void moveToNode(String node) {
+		currentEntrance = node;
+		creatures.get(currentCreature).gotoNode(node);
+	}
+
+	public String newCreature(String name, String startingNode, String startingAnimation) {
+    	int num = 0;
     	if (creatureNumbers.containsKey(name)) num = creatureNumbers.get(name) + 1;
-    	else num = 0;
     	creatureNumbers.put(name, num);
     	Creature c = new Creature(this, callbacks, name, num, startingNode, startingAnimation);
-    	creatures.put(name + "_" + num, c);
-    	creatureList.add(c);
-    	return name + "_" + num;
+    	if (num > 0) name += "_" + num;
+    	creatures.put(name, c);
+    	return name;
+    }
+    
+    public String nearestCreature(float x, float y) {
+    	return nearestCreature(x, y, true);
+    }
+    
+    public String nearestCreature(float x, float y, boolean useRadius) {
+    	String creature = null;
+    	int min = Integer.MAX_VALUE;
+    	if (useRadius) min = clickableCreatureRadius;
+    	for (Creature c : creatures.values()) {
+    		double dist = Util.distance(c.pos, new Point(x, y));
+    		if (dist < min) {
+    			min = (int) dist;
+    			creature = c.getName();
+    		}
+    	}
+		return creature;
+	}
+    
+    public void renameCreature(String creature, String newname) {
+    	Creature c = creatures.remove(creature);
+    	c.rename(newname);
+    	creatures.put(newname, c);
     }
     
     public void removeCreature(String name) {
-    	if (creatures.containsKey(name)) {
+    	if (creatures.remove(name) != null) {
     		if (creatureNumbers.get(name) == 0) {
     			creatureNumbers.remove(name);
     		} else {
     			creatureNumbers.put(name, creatureNumbers.get(name) - 1);
     		}
-	    	creatureList.remove(creatures.remove(name));
     	}
     }
     
-    public void sortByZ() {
-    	for (int i = 1; i < creatureList.size(); i += 1) {
-    		Creature temp = creatureList.get(i);
-    		for (int j = i - 1; j >= 0 && temp.zIndex < creatureList.get(j).zIndex; ) {
-    			creatureList.set(j + 1, creatureList.get(j));
-    			creatureList.set(j, temp);
-    		}
-    	}
+    public boolean isCreatureAtNode(String creature, String node) {
+    	return creatures.get(creature).currentNode.equals(node);
     }
     
-    @Override
-    public void resize(int width, int height) {}
-    
-    @Override
     public void pause() {
         paused = true;
     }
@@ -175,12 +245,10 @@ public class GameRoom extends ApplicationAdapter{
     	return paused;
     }
     
-    @Override
     public void resume() {
         paused = false;
     }
 
-    @Override
     public void create() {}
 
     public void render(float dt) {
@@ -188,9 +256,10 @@ public class GameRoom extends ApplicationAdapter{
         this.draw();
     }
 
-    @Override
     public void dispose() {
-        background.dispose();
+    	removeCreature(getCurrentCreature());
+    	saveRoom();
+        background.getTexture().dispose();
     }
     
     private static class RoomState {
@@ -198,23 +267,16 @@ public class GameRoom extends ApplicationAdapter{
         HashMap<String, Creature> creatures;
         HashMap<String, Integer> creatureNumbers;
         
-        float backgroundX;
-        float backgroundY;
-        
         public static void loadFromState(GameRoom room, RoomState state) {
         	if (state == null) {
         		System.out.println("Warning! There was no state for this room found. Initializing empty variables.");
         		room.nodes = new RoomNodes();
         		room.creatures = new HashMap<String, Creature>();
         		room.creatureNumbers = new HashMap<String, Integer>();
-        		room.backgroundX = 0;
-        		room.backgroundY = 0;
         	} else {
 	        	room.nodes = state.nodes;
 	        	room.creatures = state.creatures;
 	        	room.creatureNumbers = state.creatureNumbers;
-	        	room.backgroundX = state.backgroundX;
-	        	room.backgroundY = state.backgroundY;
         	}
         	room.nodes.init();
         }
@@ -223,9 +285,15 @@ public class GameRoom extends ApplicationAdapter{
         	state.nodes = room.nodes;
         	state.creatures = room.creatures;
         	state.creatureNumbers = room.creatureNumbers;
-        	state.backgroundX = room.backgroundX;
-        	state.backgroundY = room.backgroundY;
         }
+    }
+    
+    public void saveRoom(String path) {
+    	RoomState state = new RoomState();
+    	RoomState.saveToState(this, state);
+        Json json = new Json(JsonWriter.OutputType.json);
+        FileHandle file = Gdx.files.local(path + roomName);
+        file.writeString(json.toJson(state), false);
     }
     
     /**
@@ -246,24 +314,35 @@ public class GameRoom extends ApplicationAdapter{
         FileHandle readFrom = Gdx.files.local(savePath + name);
         RoomState state;
         if (readFrom.exists()) {
-        	if (devMode) {
-        		System.out.println("Using existing room save");
-        	}
+        	System.out.println("Using existing room save");
         	state = json.fromJson(RoomState.class, readFrom);
         } else {
-        	if (devMode) {
-        		System.out.println("Using default room loader");
-        	}
-        	readFrom = Gdx.files.internal(roomsPath + name + "/" + defaultName);
+        	System.out.println("Using default room loader");
+        	readFrom = Gdx.files.internal(roomsPath + name + "/" + name);
         	if (readFrom.exists()) {
+        		
         		state = json.fromJson(RoomState.class, readFrom);
         	} else {
-        		if (devMode) {
-        			System.out.println("Warning! Couldn't find default loader. You need to create this room!");
-        		}
+        		System.out.println("Warning! Couldn't find default loader. You need to create this room!");
         		state = null;
         	}
         }
         RoomState.loadFromState(this, state);
+        nodes.devMode = devMode;
+    	if (!devMode) {
+    		newCreature(getCurrentCreature(), currentEntrance, currentAnimation);
+    	}
+        for (Creature c : creatures.values()) {
+        	c.init(this, callbacks);
+        }
     }
+
+	public void touchdragged() {
+		// STUB Not implementing. Would call creature events.
+	}
+
+	public void mouseMoved() {
+		// STUB Not implementing. Would call creature events.
+		
+	}
 }
