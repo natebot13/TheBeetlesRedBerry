@@ -1,5 +1,7 @@
 package me.nathanp.beetlesredberry.rooms;
 
+import com.brashmonkey.spriter.Point;
+
 import me.nathanp.beetlesredberry.Creature;
 import me.nathanp.beetlesredberry.CreatureFunctions;
 import me.nathanp.beetlesredberry.GameRoom;
@@ -35,11 +37,20 @@ public class BushRoom extends CreatureFunctions {
 		// TODO Auto-generated method stub
 
 	}
+	
+	@Override
+	public void moving(GameRoom room, Creature creature, Point movement) {
+		super.moving(room, creature, movement);
+	}
 
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-		// TODO Auto-generated method stub
-
+		super.arrivedAtNode(room, creature, node);
+		if (node.equals("bottomexit")) {
+			room.gotoNextRoom(new RightcupRoom(), "topentrance", creature.animation);
+		} else if (node.equals("topexit")) {
+			room.gotoNextRoom(new BerryRoom(), "topentrance", creature.animation);
+		}
 	}
 
 	@Override

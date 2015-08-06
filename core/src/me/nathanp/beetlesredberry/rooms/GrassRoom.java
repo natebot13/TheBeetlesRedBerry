@@ -21,10 +21,13 @@ public class GrassRoom extends CreatureFunctions {
 
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-		if (node.equals("rightentrance")) {
-			creature.gotoNextNode();
-		} else if (node.equals("rightexit")) {
+		super.arrivedAtNode(room, creature, node);
+		if (node.equals("rightexit")) {
 			room.gotoNextRoom(new FlyRoom(), "leftentrance", creature.animation);
+		} else if (node.equals("berryentrance")) {
+			creature.gotoNode("berrydie");
+		} else if (node.equals("berrydie")) {
+			creature.animation = "break";
 		}
 	}
 
@@ -32,7 +35,9 @@ public class GrassRoom extends CreatureFunctions {
 	public void finishedPath(GameRoom room, Creature creature, String node) {}
 
 	@Override
-	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {}
+	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {
+		super.nextAnimation(room, creature, prevAnim);
+	}
 
 	@Override
 	public void moving(GameRoom room, Creature creature, Point movement) {

@@ -175,6 +175,12 @@ public class LevelEditorInput implements InputProcessor {
 				n.scale = 1f;
 				System.out.println("New scale: " + n.scale);
 			}
+		} else if (character == '=') {
+			for (Node n : room.getNodes().nodes.values()) {
+				if (n.clickableRadius < 2) {
+					n.clickableRadius = 5;
+				}
+			}
 		}
 		return false;
 	}

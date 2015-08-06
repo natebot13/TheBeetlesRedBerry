@@ -20,27 +20,23 @@ public class FlyRoom extends CreatureFunctions {
 
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-		if (node.equals("leftentrance")) {
-			creature.gotoNextNode();
-		} else if (node.equals("rightentrance")) {
-			creature.gotoNextNode();
-		} else if (node.equals("topentrance")) {
-			creature.gotoNextNode();
-		} else if (node.equals("rightexit") && room.getCurrentCreature().equals(creature.name)) {
+		super.arrivedAtNode(room, creature, node);
+		if (node.equals("rightexit") && room.getCurrentCreature().equals(creature.name)) {
 			room.gotoNextRoom(new MenuRoom(), "leftentrance", creature.animation);
 		} else if (node.equals("leftexit") && room.getCurrentCreature().equals(creature.name)) {
 			room.gotoNextRoom(new GrassRoom(), "rightentrance", creature.animation);
 		} else if (node.equals("topexit") && room.getCurrentCreature().equals(creature.name)) {
 			room.gotoNextRoom(new BranchRoom(), "bottomentrance", creature.animation);
-		} else if (node.equals("chat")) {
+		} else if (node.equals("chat") && room.isCurrentCreature(creature)) {
 			room.changeCurrentCreature("fly");
 		} else if (node.equals("land")) {
-			room.changeCurrentCreature("ant");
+			if (room.isCurrentCreature(creature)) {
+				room.changeCurrentCreature("ant");
+			}
 			creature.animation = "idle";
 			if (creature.flippedY() > 0) {
 				creature.flipY();
 			}
-			room.moveToNode("previous");
 		}
 	}
 

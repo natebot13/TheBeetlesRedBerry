@@ -33,6 +33,12 @@ public class MenuRoom extends CreatureFunctions {
         } else if (node.equals("chat")) {
         	room.getCreature("beetle").animation = "talk";
         	room.getCreature("talkbubble").speed = 15;
+        } else if (node.equals("berryentrance")) {
+        	creature.gotoNode("berryland");
+        } else if (node.equals("berryland")) {
+        	room.newCreature("thankyou", "thankyou", "idle");
+    	} else if (node.equals("thankyou")) {
+        	creature.gotoNextNode();
         }
     }
     

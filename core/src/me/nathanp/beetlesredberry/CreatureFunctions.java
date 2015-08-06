@@ -2,6 +2,8 @@ package me.nathanp.beetlesredberry;
 
 import com.brashmonkey.spriter.Point;
 
+import me.nathanp.beetlesredberry.rooms.BerryRoom;
+
 public abstract class CreatureFunctions {
 	
 	public abstract String getRoomName();
@@ -14,11 +16,19 @@ public abstract class CreatureFunctions {
 	
 	public abstract void headingToNode(GameRoom room, Creature creature, String node);
 	
-	public abstract void arrivedAtNode(GameRoom room, Creature creature, String node);
+	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
+		if (!creature.name.equals("berry") && node.contains("entrance") && room.isCurrentCreature(creature)) {
+			creature.gotoNextNode();
+		}
+	}
 	
 	public abstract void finishedPath(GameRoom room, Creature creature, String node);
 	
-	public abstract void nextAnimation(GameRoom room, Creature creature, String prevAnim);
+	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {
+		if (prevAnim.equals("break")) {
+			room.gotoNextRoom(new BerryRoom(), "die", creature.animation);
+		}
+	}
 	
 	public void moving(GameRoom room, Creature creature, Point movement) {
 		if (creature.name.equals("ant")) {
@@ -26,6 +36,14 @@ public abstract class CreatureFunctions {
 			flipFromMovement(creature, true, movement);
 		} else if (creature.name.equals("fly")) {
 			creature.animation = "fly";
+			flipFromMovement(creature, false, movement);
+		} else if (creature.name.equals("partyfly")) {
+			flipFromMovement(creature, false, movement);
+		} else if (creature.name.equals("cookie") || creature.name.equals("notcookie")) {
+			flipFromMovement(creature, true, movement);
+		} else if (creature.name.equals("scissors")) {
+			flipFromMovement(creature, true, movement);
+		} else if (creature.name.equals("bumper")) {
 			flipFromMovement(creature, false, movement);
 		}
 	}

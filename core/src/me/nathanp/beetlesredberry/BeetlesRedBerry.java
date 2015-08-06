@@ -2,6 +2,7 @@ package me.nathanp.beetlesredberry;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -25,6 +26,7 @@ public class BeetlesRedBerry implements ApplicationListener {
     private FileHandle scmlHandle;
     private SCMLReader reader;
     private Data data;
+    private Music ambience;
     
     private static OrthographicCamera camera;
     private static Viewport viewport;
@@ -66,10 +68,15 @@ public class BeetlesRedBerry implements ApplicationListener {
         renderer = new ShapeRenderer();
         drawer = new SpriterDrawer(loader, batch, renderer);
         
+        ambience = Gdx.audio.newMusic(Gdx.files.internal("sounds/naturesounds.ogg"));
+        ambience.setLooping(true);
+        ambience.play();
+        
         if (debug) {
-        	room = new GameRoom(WORLD_WIDTH, WORLD_HEIGHT, new DebugRoom("lilypad"), viewport, data, drawer, "ant", "rightentrance", "idle", debug);
+        	room = new GameRoom(WORLD_WIDTH, WORLD_HEIGHT, new DebugRoom("orchid"), viewport, data, drawer, "ant", "rightentrance", "idle", debug);
         } else {
         	CurrentRoomData roomdata = loadRoomData();
+        	System.out.println(roomdata.roomname);
         	room = new GameRoom(WORLD_WIDTH, WORLD_HEIGHT, getCreatureFunction(roomdata.roomname), viewport, data, drawer, roomdata.creature, roomdata.entrance, roomdata.animation, debug);
         }
     }
@@ -96,6 +103,8 @@ public class BeetlesRedBerry implements ApplicationListener {
     @Override
     public void pause() {
     	if (room != null) {
+    		CurrentRoomData roomdata = new CurrentRoomData(room.roomName, room.currentEntrance, room.getCurrentCreature(), room.currentAnimation);
+        	roomdata.save();
     		room.pause();
     	}
     }
@@ -109,10 +118,11 @@ public class BeetlesRedBerry implements ApplicationListener {
     
     @Override
     public void dispose() {
-    	CurrentRoomData roomdata = new CurrentRoomData(room.roomName, room.currentEntrance, room.getCurrentCreature(), room.currentAnimation);
+    	CurrentRoomData roomdata = new CurrentRoomData(room.roomName, room.currentEntrance, room.getCurrentCreature(), room.getCurrentAnimation());
     	roomdata.save();
         room.dispose();
         batch.dispose();
+        ambience.dispose();
     }
     
     @Override
@@ -132,7 +142,30 @@ public class BeetlesRedBerry implements ApplicationListener {
     		return new GrassRoom();
     	} else if (name.equals("flipflop")) {
     		return new FlipFlopRoom();
+    	} else if (name.equals("golf")) {
+    		return new GolfRoom();
+    	} else if (name.equals("leftcup")) {
+    		return new LeftcupRoom();
+    	} else if (name.equals("cups")) {
+    		return new CupsRoom();
+    	} else if (name.equals("lilypad")) {
+    		return new LilypadRoom();
+    	} else if (name.equals("stalk")) {
+    		return new StalkRoom();
+    	} else if (name.equals("rightcup")) {
+    		return new RightcupRoom();
+    	} else if (name.equals("bush")) {
+    		return new BushRoom();
+    	} else if (name.equals("party")) {
+    		return new PartyRoom();
+    	} else if (name.equals("berry")) {
+    		return new BerryRoom();
+    	} else if (name.equals("cannon")) {
+    		return new CannonRoom();
+    	} else if (name.equals("orchid")) {
+    		return new OrchidRoom();
     	}
+    	System.out.println("Add " + name + " to getCreatureFunction!");
     	return new MenuRoom();
     }
     

@@ -38,8 +38,14 @@ public class BerryRoom extends CreatureFunctions {
 
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-		// TODO Auto-generated method stub
-
+		super.arrivedAtNode(room, creature, node);
+		if (node.equals("topexit")) {
+			room.gotoNextRoom(new BushRoom(), "topentrance", creature.animation);
+		} else if (node.equals("berrydrop") && room.isCurrentCreature(creature)) {
+			room.changeCurrentCreature("berry");
+		} else if (node.equals("berryexit")) {
+			room.gotoNextRoom(new CannonRoom(), "berryentrance", creature.animation);
+		}
 	}
 
 	@Override
@@ -50,8 +56,19 @@ public class BerryRoom extends CreatureFunctions {
 
 	@Override
 	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {
-		// TODO Auto-generated method stub
-
+		if (prevAnim.equals("grow")) {
+			creature.animation = "idle";
+		} else if (prevAnim.equals("break")) {
+			creature.teleToNode("berry");
+			creature.animation = "grow";
+			if (room.isCreatureAtNode("cookie", "berrydrop")) {
+				room.changeCurrentCreature("cookie");
+			} else if (room.isCreatureAtNode("scissors", "berrydrop")) {
+				room.changeCurrentCreature("scissors");
+			} else if (room.isCreatureAtNode("muscle", "berrydrop")) {
+				room.changeCurrentCreature("muscle");
+			}
+		}
 	}
 
 	@Override

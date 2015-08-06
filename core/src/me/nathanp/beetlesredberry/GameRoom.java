@@ -42,7 +42,8 @@ public class GameRoom {
     private HashMap<String, Integer> creatureNumbers = new HashMap<String, Integer>();
     public RoomNodes nodes;
     public HashMap<String, Creature> creatures;
-    private transient String currentCreature;
+    private transient String currentCreature, currentCreatureType;
+    private transient int currentCreatureNumber;
     
     private transient FileHandle saveTo;
     
@@ -58,7 +59,7 @@ public class GameRoom {
     	this.data = data;
         this.drawer = drawer;
         this.devMode = devMode;
-        setCurrentCreature(initialCreature);
+        setCurrentCreature(initialCreature, initialCreature);
         if (devMode) {
         	Gdx.input.setInputProcessor(new LevelEditorInput(this, viewport));
         	System.out.println("Now Level Editting...");
@@ -170,15 +171,24 @@ public class GameRoom {
 		return currentCreature;
 	}
 
-	public void setCurrentCreature(String currentCreature) {
-		this.currentCreature = currentCreature;
+	public void setCurrentCreature(String name, String type) {
+		currentCreature = name;
+		currentCreatureType = type;
+	}
+	
+	public boolean isCurrentCreature(Creature creature) {
+		System.out.println(creature);
+		return creature.name.equals(currentCreature);
 	}
 	
 	public void changeCurrentCreature(String currentCreature) {
-		if (getCurrentCreature() != null) {
+		if (creatures.containsKey(currentCreature)) {
 			creatures.get(getCurrentCreature()).deactivated();
+			currentCreatureType = creatures.get(currentCreature).name;
+			currentCreatureNumber = creatures.get(currentCreature).number;
 			this.currentCreature = currentCreature;
 			creatures.get(getCurrentCreature()).activated();
+			moveToNextNode();
 		} else {
 			this.currentCreature = currentCreature;
 		}
@@ -188,13 +198,23 @@ public class GameRoom {
 		currentEntrance = node;
 		creatures.get(currentCreature).gotoNode(node);
 	}
+	
+	public void moveToNextNode() {
+		creatures.get(currentCreature).gotoNextNode();
+		currentEntrance = creatures.get(currentCreature).currentNode;
+	}
+	
+	public String newCreature(String type, String startingNode, String startingAnimation) {
+		int num = 0;
+		if (creatureNumbers.containsKey(type)) num = creatureNumbers.get(type) + 1;
+    	creatureNumbers.put(type, num);
+    	String name = type;
+    	if (num > 0) name = type + "_" + num;
+    	return newCreature(name, type, startingNode, startingAnimation, num);
+	}
 
-	public String newCreature(String name, String startingNode, String startingAnimation) {
-    	int num = 0;
-    	if (creatureNumbers.containsKey(name)) num = creatureNumbers.get(name) + 1;
-    	creatureNumbers.put(name, num);
-    	Creature c = new Creature(this, callbacks, name, num, startingNode, startingAnimation);
-    	if (num > 0) name += "_" + num;
+	public String newCreature(String name, String type, String startingNode, String startingAnimation, int num) {
+    	Creature c = new Creature(this, callbacks, type, num, startingNode, startingAnimation);
     	creatures.put(name, c);
     	return name;
     }
@@ -207,11 +227,11 @@ public class GameRoom {
     	String creature = null;
     	int min = Integer.MAX_VALUE;
     	if (useRadius) min = clickableCreatureRadius;
-    	for (Creature c : creatures.values()) {
-    		double dist = Util.distance(c.pos, new Point(x, y));
+    	for (String name : creatures.keySet()) {
+    		double dist = Util.distance(creatures.get(name).pos, new Point(x, y));
     		if (dist < min) {
     			min = (int) dist;
-    			creature = c.getName();
+    			creature = name;
     		}
     	}
 		return creature;
@@ -219,21 +239,26 @@ public class GameRoom {
     
     public void renameCreature(String creature, String newname) {
     	Creature c = creatures.remove(creature);
-    	c.rename(newname);
     	creatures.put(newname, c);
     }
     
     public void removeCreature(String name) {
-    	if (creatures.remove(name) != null) {
-    		if (creatureNumbers.get(name) == 0) {
-    			creatureNumbers.remove(name);
-    		} else {
-    			creatureNumbers.put(name, creatureNumbers.get(name) - 1);
-    		}
+    	if (creatures.get(name) != null) {
+    		//String creature = creatures.get(name).name;
+        	if (creatures.remove(name) != null) {
+//        		if (creatureNumbers.get(creature) == 0) {
+//        			creatureNumbers.remove(creature);
+//        		} else {
+//        			creatureNumbers.put(creature, creatureNumbers.get(creature) - 1);
+//        		}
+        	}
     	}
     }
     
     public boolean isCreatureAtNode(String creature, String node) {
+    	if (!creatures.containsKey(creature)) {
+    		return false;
+    	}
     	return creatures.get(creature).currentNode.equals(node);
     }
     
@@ -330,7 +355,9 @@ public class GameRoom {
         RoomState.loadFromState(this, state);
         nodes.devMode = devMode;
     	if (!devMode) {
-    		newCreature(getCurrentCreature(), currentEntrance, currentAnimation);
+    		System.out.println(currentCreature);
+    		System.out.println(currentCreatureType);
+    		newCreature(currentCreature, currentCreatureType, currentEntrance, currentAnimation, currentCreatureNumber);
     	}
         for (Creature c : creatures.values()) {
         	c.init(this, callbacks);
@@ -344,5 +371,9 @@ public class GameRoom {
 	public void mouseMoved() {
 		// STUB Not implementing. Would call creature events.
 		
+	}
+
+	public String getCurrentAnimation() {
+		return creatures.get(getCurrentCreature()).animation;
 	}
 }

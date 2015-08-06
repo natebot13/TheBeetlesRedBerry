@@ -1,5 +1,7 @@
 package me.nathanp.beetlesredberry.rooms;
 
+import com.brashmonkey.spriter.Point;
+
 import me.nathanp.beetlesredberry.Creature;
 import me.nathanp.beetlesredberry.CreatureFunctions;
 import me.nathanp.beetlesredberry.GameRoom;
@@ -35,11 +37,22 @@ public class StalkRoom extends CreatureFunctions {
 		// TODO Auto-generated method stub
 
 	}
+	
+	@Override
+	public void moving(GameRoom room, Creature creature, Point movement) {
+		super.moving(room, creature, movement);
+	}
 
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-		// TODO Auto-generated method stub
-
+		super.arrivedAtNode(room, creature, node);
+		if (node.equals("bottomexit")) {
+			room.gotoNextRoom(new BranchRoom(), "topentrance", creature.animation);
+		} else if (node.equals("topexit")) {
+			room.gotoNextRoom(new FlipFlopRoom(), "bottomentrance", creature.animation);
+		} else if (node.equals("rightexit")) {
+			room.gotoNextRoom(new RightcupRoom(), "bottomentrance", creature.animation);
+		}
 	}
 
 	@Override
@@ -50,8 +63,7 @@ public class StalkRoom extends CreatureFunctions {
 
 	@Override
 	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {
-		// TODO Auto-generated method stub
-
+		super.nextAnimation(room, creature, prevAnim);
 	}
 
 	@Override

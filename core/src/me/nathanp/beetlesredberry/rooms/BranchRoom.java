@@ -21,10 +21,21 @@ public class BranchRoom extends CreatureFunctions {
 
 	@Override
 	public void arrivedAtNode(GameRoom room, Creature creature, String node) {
-		if (node.equals("bottomentrance")) {
-			creature.gotoNextNode();
-		} else if (node.equals("bottomexit")) {
+		super.arrivedAtNode(room, creature, node);
+		if (node.equals("bottomexit")) {
 			room.gotoNextRoom(new FlyRoom(), "topentrance", creature.animation);
+		} else if (node.equals("chat") && room.isCurrentCreature(creature)) {
+			if (room.isCreatureAtNode("cookie", "messenger")) {
+				room.changeCurrentCreature("cookie");
+			} else if (room.isCreatureAtNode("scissors", "messenger")) {
+				room.changeCurrentCreature("scissors");
+			}
+		} else if (node.equals("messenger") && room.isCurrentCreature(creature)) {
+			room.changeCurrentCreature("fly");
+		} else if (node.equals("leftexit") && room.isCurrentCreature(creature)) {
+			room.gotoNextRoom(new CupsRoom(), "bottomentrance", creature.animation);
+		} else if (node.equals("topexit") && room.isCurrentCreature(creature)) {
+			room.gotoNextRoom(new StalkRoom(), "bottomentrance", creature.animation);
 		}
 	}
 
@@ -35,7 +46,9 @@ public class BranchRoom extends CreatureFunctions {
 	public void nextAnimation(GameRoom room, Creature creature, String prevAnim) {}
 
 	@Override
-	public void moving(GameRoom room, Creature creature, Point movement) {}
+	public void moving(GameRoom room, Creature creature, Point movement) {
+		super.moving(room, creature, movement);
+	}
 
 	@Override
 	public void stopped(GameRoom room, Creature creature, String node) {

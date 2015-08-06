@@ -39,7 +39,7 @@ public class Creature {
     
     public Creature(GameRoom room, CreatureFunctions callbacks, String name, int number, String startingNode, String animation) {
     	this.callbacks = callbacks;
-    	this.room  = room;
+    	this.room = room;
     	this.name = name;
     	this.number = number;
     	currentNode = startingNode;
@@ -119,6 +119,7 @@ public class Creature {
     public void teleToNode(String node) {
     	currentNode = node;
     	currentPath.clear();
+    	currentPath.add(node);
     	pos.set(room.getNodes().getPoint(node));
     }
     
@@ -164,6 +165,7 @@ public class Creature {
     }
     
     public void init(GameRoom room, CreatureFunctions callbacks) {
+    	System.out.println(name);
     	this.creature = new Player(room.getData().getEntity(name));
     	this.room = room;
     	this.callbacks = callbacks;
@@ -218,10 +220,6 @@ public class Creature {
     	}
     }
     
-    public void rename(String newname) {
-    	name = newname;
-    }
-    
     public String getName() {
     	return name;
     }
@@ -265,5 +263,14 @@ public class Creature {
 		public int compare(Creature creature1, Creature creature2) {
 			return creature1.zIndex - creature2.zIndex;
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return name + ":" + number;
+	}
+
+	public void clearPath() {
+		currentPath.clear();
 	}
 }
